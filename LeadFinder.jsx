@@ -48,7 +48,7 @@ export default function LeadFinder() {
 
   const { data: scans = [] } = useQuery({
     queryKey: ['scans', bid],
-    queryFn: () => bid ? base44.entities.LeadScan.filter({ business_id: bid }, '-created_date', 20) : [],
+    queryFn: () => bid ? base44.entities.LeadScanResult.filter({ business_id: bid }, '-created_date', 20) : [],
     enabled: !!bid,
   });
 
