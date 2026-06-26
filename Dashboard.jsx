@@ -22,7 +22,7 @@ export default function Dashboard() {
 
   const { data: audits = [] } = useQuery({
     queryKey: ['audits', bid],
-    queryFn: () => bid ? base44.entities.SeoAudit.filter({ business_id: bid }, '-created_date', 5) : [],
+    queryFn: () => bid ? base44.entities.SeoScanResult.filter({ business_id: bid }, '-created_date', 5) : [],
     enabled: !!bid,
   });
 
@@ -33,12 +33,12 @@ export default function Dashboard() {
 
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications-recent'],
-    queryFn: () => base44.entities.Notification.filter({ read: false }, '-created_date', 10),
+    queryFn: () => base44.entities.NotificationQueue.filter({ read: false }, '-created_date', 10),
   });
 
   const { data: followUps = [] } = useQuery({
     queryKey: ['followups', bid],
-    queryFn: () => bid ? base44.entities.FollowUp.filter({ business_id: bid, status: 'pending' }) : [],
+    queryFn: () => bid ? base44.entities.Lead.filter({ business_id: bid, status: 'pending' }) : [],
     enabled: !!bid,
   });
 
