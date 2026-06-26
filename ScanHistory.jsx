@@ -15,12 +15,12 @@ export default function ScanHistory() {
 
   const { data: leadScans = [] } = useQuery({
     queryKey: ['lead-scans', bid],
-    queryFn: () => bid ? base44.entities.LeadScan.filter({ business_id: bid }, '-created_date', 50) : [],
+    queryFn: () => bid ? base44.entities.LeadScanResult.filter({ business_id: bid }, '-created_date', 50) : [],
     enabled: !!bid,
   });
   const { data: seoAudits = [] } = useQuery({
     queryKey: ['seo-audits', bid],
-    queryFn: () => bid ? base44.entities.SeoAudit.filter({ business_id: bid }, '-created_date', 50) : [],
+    queryFn: () => bid ? base44.entities.SeoScanResult.filter({ business_id: bid }, '-created_date', 50) : [],
     enabled: !!bid,
   });
 
