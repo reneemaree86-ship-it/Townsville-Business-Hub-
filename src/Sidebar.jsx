@@ -5,9 +5,9 @@ import {
   UserSearch, MapPin, Megaphone, Plug, AlertTriangle,
   History, Bell, Clock, CheckSquare, Settings, Link2, X, Bot
 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
+import { ScrollArea } from '@/scroll-area';
+import { Badge } from '@/badge';
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
