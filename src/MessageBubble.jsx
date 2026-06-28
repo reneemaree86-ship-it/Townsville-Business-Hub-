@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Button } from "@/components/ui/button";
+import { Button } from "@/button";
 import { Copy, Zap, CheckCircle2, AlertCircle, Loader2, ChevronRight, Clock, FileText } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils";
 import { toast } from "sonner";
 
 const FunctionDisplay = ({ toolCall }) => {
