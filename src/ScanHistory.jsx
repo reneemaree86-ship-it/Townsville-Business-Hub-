@@ -1,12 +1,12 @@
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import PageHeader from '@/components/shared/PageHeader';
-import StatusBadge from '@/components/shared/StatusBadge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { base44 } from '@/base44Client';
+import PageHeader from '@/PageHeader';
+import StatusBadge from '@/StatusBadge';
+import { Card, CardContent } from '@/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
 import { format } from 'date-fns';
 
 export default function ScanHistory() {
