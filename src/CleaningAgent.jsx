@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { base44 } from '@/base44Client';
+import { Button } from '@/button';
+import { Input } from '@/input';
 import { Send, Bot, Plus, Zap } from 'lucide-react';
-import MessageBubble from '@/components/agent/MessageBubble';
+import MessageBubble from '@/MessageBubble';
 
 const QUICK_COMMANDS = [
   { label: '🔍 Scan for leads', prompt: 'Scan for new cleaning leads across Google, Facebook, Gumtree, and local Townsville sources. Find people looking for cleaners right now and save any real leads you find.' },
