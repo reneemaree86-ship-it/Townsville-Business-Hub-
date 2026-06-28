@@ -1,0 +1,11 @@
+# Wrangler
+.wrangler/
+dist/
+
+# Node
+node_modules/
+
+# Env
+.env
+.env.local
+.env.*.local
