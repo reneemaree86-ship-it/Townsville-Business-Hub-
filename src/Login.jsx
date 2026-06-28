@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { base44 } from "@/base44Client";
+import { Button } from "@/button";
+import { Input } from "@/input";
+import { Label } from "@/label";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
-import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
+import AuthLayout from "@/AuthLayout";
+import GoogleIcon from "@/GoogleIcon";
 
 export default function Login() {
   const [email, setEmail] = useState("");
