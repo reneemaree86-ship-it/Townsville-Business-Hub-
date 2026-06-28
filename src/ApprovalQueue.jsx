@@ -1,11 +1,11 @@
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import PageHeader from '@/components/shared/PageHeader';
-import StatusBadge from '@/components/shared/StatusBadge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { base44 } from '@/base44Client';
+import PageHeader from '@/PageHeader';
+import StatusBadge from '@/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/card';
+import { Button } from '@/button';
 import { Check, X } from 'lucide-react';
 
 export default function ApprovalQueue() {
