@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import PageHeader from '@/components/shared/PageHeader';
-import StatusBadge from '@/components/shared/StatusBadge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import { base44 } from '@/base44Client';
+import PageHeader from '@/PageHeader';
+import StatusBadge from '@/StatusBadge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/card';
+import { Button } from '@/button';
+import { Input } from '@/input';
+import { Textarea } from '@/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/select';
+import { Label } from '@/label';
+import { Badge } from '@/badge';
 import { Megaphone, Loader2, Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
