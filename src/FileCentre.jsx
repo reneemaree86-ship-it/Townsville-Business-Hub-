@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { base44 } from "@/base44Client";
 
 const STATUS = ["All", "New", "Needs approval", "Responded", "Follow-up needed", "Won", "Lost", "Not suitable", "Ignored"];
 const CATEGORIES = ["All", "Hot lead", "Warm lead", "Maybe", "Not suitable"];
