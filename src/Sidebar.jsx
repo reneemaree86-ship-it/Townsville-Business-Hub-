@@ -38,8 +38,8 @@ export default function Sidebar({ activeBusiness, onBusinessChange, businesses, 
     <aside className="h-screen w-64 bg-card border-r border-border flex flex-col">
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div>
-          <h1 className="text-sm font-bold tracking-tight text-primary">BCC</h1>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Business Control Centre</p>
+          <h1 className="text-sm font-bold tracking-tight text-primary">Townsville Ops Hub</h1>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Renee's Cleaning Services</p>
         </div>
         {onClose && (
           <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted">
