@@ -34,6 +34,7 @@ import UrlWatchlistPage from '@/UrlWatchlistPage';
 import CleaningAgent from '@/CleaningAgent';
 import FileCentre from '@/FileCentre';
 import ReneesCleaningProfile from '@/ReneesCleaningProfile';
+import BusinessInbox from '@/BusinessInbox';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -65,6 +66,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/inbox" element={<BusinessInbox />} />
           <Route path="/seo" element={<SeoControlCentre />} />
           <Route path="/crawl" element={<WebsiteCrawlCentre />} />
           <Route path="/traffic" element={<OrganicTraffic />} />
