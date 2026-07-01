@@ -310,8 +310,7 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
         </div>
         <div>
           <Label className="text-xs">GST (10%) $</Label>
-          <Input type="number" className="mt-1 text-sm" value={form.gst_amount} readOnly
-            className="mt-1 text-sm bg-muted cursor-not-allowed" />
+          <Input type="number" value={form.gst_amount} readOnly className="mt-1 text-sm bg-muted cursor-not-allowed" />
         </div>
       </div>
 
