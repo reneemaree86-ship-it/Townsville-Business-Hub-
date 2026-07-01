@@ -20,7 +20,7 @@ export default function DashboardLayout() {
 
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications-unread'],
-    queryFn: () => base44.entities.Notification.filter({ read: false }),
+    queryFn: () => base44.entities.NotificationQueue.filter({ read: false }),
     refetchInterval: 30000,
   });
 

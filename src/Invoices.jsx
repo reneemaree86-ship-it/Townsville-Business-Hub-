@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { base44 } from '@/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/card';
 import { Button } from '@/button';
@@ -310,8 +311,7 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
         </div>
         <div>
           <Label className="text-xs">GST (10%) $</Label>
-          <Input type="number" className="mt-1 text-sm" value={form.gst_amount} readOnly
-            className="mt-1 text-sm bg-muted cursor-not-allowed" />
+          <Input type="number" value={form.gst_amount} readOnly className="mt-1 text-sm bg-muted cursor-not-allowed" />
         </div>
       </div>
 
@@ -354,7 +354,8 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
   );
 }
 
-export default function Invoices({ activeBusiness }) {
+export default function Invoices() {
+  const { activeBusiness } = useOutletContext();
   const [invoices, setInvoices] = useState([]);
   const [clients, setClients] = useState([]);
   const [businesses, setBusinesses] = useState([]);

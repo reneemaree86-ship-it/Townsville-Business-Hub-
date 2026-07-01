@@ -36,6 +36,7 @@ import FileCentre from '@/FileCentre';
 import ReneesCleaningProfile from '@/ReneesCleaningProfile';
 import BusinessInbox from '@/BusinessInbox';
 import Invoices from '@/Invoices';
+import Clients from '@/Clients';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -68,6 +69,8 @@ const AuthenticatedApp = () => {
         <Route element={<DashboardLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/inbox" element={<BusinessInbox />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/clients" element={<Clients />} />
           <Route path="/seo" element={<SeoControlCentre />} />
           <Route path="/crawl" element={<WebsiteCrawlCentre />} />
           <Route path="/traffic" element={<OrganicTraffic />} />
