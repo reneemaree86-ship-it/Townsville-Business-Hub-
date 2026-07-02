@@ -55,8 +55,8 @@ export default function ApprovalQueue() {
                     {lead.response_draft && <p className="text-[10px] bg-card p-2 rounded mt-2 whitespace-pre-wrap">{lead.response_draft}</p>}
                   </div>
                   <div className="flex gap-1.5 flex-shrink-0">
-                    <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-600" onClick={() => updateLeadMutation.mutate({ id: lead.id, data: { status: 'applied_responded' } })}><Check className="w-3 h-3" /> Approve</Button>
-                    <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-red-500" onClick={() => updateLeadMutation.mutate({ id: lead.id, data: { status: 'not_suitable' } })}><X className="w-3 h-3" /> Reject</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-emerald-600" onClick={() => updateLeadMutation.mutate({ id: lead.id, data: { status: 'contacted' } })}><Check className="w-3 h-3" /> Approve</Button>
+                    <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 text-red-500" onClick={() => updateLeadMutation.mutate({ id: lead.id, data: { status: 'rejected' } })}><X className="w-3 h-3" /> Reject</Button>
                   </div>
                 </div>
               </div>

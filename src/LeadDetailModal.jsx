@@ -15,14 +15,21 @@ import { Copy, ExternalLink, CheckCircle2 } from 'lucide-react';
 
 const STATUSES = [
   { value: 'new', label: 'New' },
-  { value: 'hot', label: 'Hot' },
+  { value: 'scored', label: 'Scored' },
   { value: 'needs_approval', label: 'Needs Approval' },
   { value: 'draft_ready', label: 'Draft Ready' },
-  { value: 'applied_responded', label: 'Responded' },
+  { value: 'contacted', label: 'Contacted' },
   { value: 'follow_up_due', label: 'Follow-Up Due' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
-  { value: 'not_suitable', label: 'Not Suitable' },
+  { value: 'converted', label: 'Converted (Won)' },
+  { value: 'closed', label: 'Closed (Lost)' },
+  { value: 'rejected', label: 'Rejected (Not Suitable)' },
+];
+
+const URGENCY_OPTIONS = [
+  { value: 'flexible', label: 'Flexible' },
+  { value: 'this_week', label: 'This Week' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'unknown', label: 'Unknown' },
 ];
 
 export default function LeadDetailModal({ lead, onClose }) {
@@ -33,7 +40,7 @@ export default function LeadDetailModal({ lead, onClose }) {
     contact_email: lead.contact_email || '',
     suburb: lead.suburb || '',
     service_type: lead.service_type || '',
-    urgency: lead.urgency || 'medium',
+    urgency: lead.urgency || 'unknown',
     status: lead.status || 'new',
     notes: lead.notes || '',
     response_draft: lead.response_draft || '',
@@ -109,10 +116,7 @@ export default function LeadDetailModal({ lead, onClose }) {
                 <Select value={form.urgency} onValueChange={v => setForm({...form, urgency: v})}>
                   <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    {URGENCY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

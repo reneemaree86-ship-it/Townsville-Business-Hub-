@@ -9,7 +9,7 @@ import { Button } from '@/button';
 import { Clock, Check } from 'lucide-react';
 import { format, isPast } from 'date-fns';
 
-const CLOSED_STATUSES = ['won', 'lost', 'not_suitable', 'archived'];
+const CLOSED_STATUSES = ['converted', 'closed', 'rejected'];
 
 export default function FollowUps() {
   const { activeBusiness } = useOutletContext();

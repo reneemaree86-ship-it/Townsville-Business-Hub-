@@ -17,7 +17,14 @@ import LeadDetailModal from '@/LeadDetailModal';
 import ScanLogPanel from '@/ScanLogPanel';
 import { UserSearch, Loader2, Plus, Clipboard, Search, Flame, AlertTriangle, CheckCircle2, XCircle, Settings } from 'lucide-react';
 
-const STATUS_FILTERS = ['all','new','hot','needs_approval','draft_ready','applied_responded','follow_up_due','won','lost'];
+const STATUS_FILTERS = ['all','new','scored','needs_approval','draft_ready','contacted','follow_up_due','converted','closed','rejected'];
+
+const URGENCY_OPTIONS = [
+  { value: 'flexible', label: 'Flexible' },
+  { value: 'this_week', label: 'This Week' },
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'unknown', label: 'Unknown' },
+];
 
 export default function LeadFinder() {
   const { activeBusiness } = useOutletContext();
@@ -34,7 +41,7 @@ export default function LeadFinder() {
   const [latestScanLog, setLatestScanLog] = useState(null);
   const emptyManualForm = {
     name: '', contact_phone: '', contact_email: '',
-    service_type: '', suburb: '', urgency: 'medium',
+    service_type: '', suburb: '', urgency: 'unknown',
     notes: '', source_url: '',
   };
   const [manualForm, setManualForm] = useState(emptyManualForm);
@@ -162,14 +169,14 @@ export default function LeadFinder() {
                           source_platform: pasteSource,
                           service_type: parsedResult.service_type || 'Cleaning',
                           suburb: parsedResult.suburb || '',
-                          urgency: ['low','medium','high','urgent'].includes(parsedResult.urgency) ? parsedResult.urgency : 'medium',
+                          urgency: ['flexible','this_week','urgent','unknown'].includes(parsedResult.urgency) ? parsedResult.urgency : 'unknown',
                           original_text: pasteText,
                           budget_clues: parsedResult.budget_clues || '',
                           contact_phone: parsedResult.contact_phone || '',
                           contact_email: parsedResult.contact_email || '',
                           lead_score: parsedResult.lead_score || 50,
                           score_rationale: parsedResult.score_rationale || '',
-                          status: (parsedResult.lead_score || 50) >= 70 ? 'hot' : 'new',
+                          status: 'new',
                           response_draft: parsedResult.response_draft || '',
                           manual_approval_required: !!parsedResult.manual_approval_required,
                           manual_approval_reason: parsedResult.manual_approval_required ? 'Flagged by AI parser -- review before contacting.' : '',
@@ -204,10 +211,7 @@ export default function LeadFinder() {
                       <Select value={manualForm.urgency} onValueChange={v => setManualForm({...manualForm, urgency: v})}>
                         <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
+                          {URGENCY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -268,9 +272,9 @@ export default function LeadFinder() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Total Leads" value={leads.length} icon={UserSearch} />
-        <StatCard label="Hot Leads" value={leads.filter(l => l.status === 'hot').length} icon={Flame} color="text-orange-500" />
+        <StatCard label="Hot Leads" value={leads.filter(l => (l.lead_score || 0) >= 70 || l.urgency === 'urgent').length} icon={Flame} color="text-orange-500" />
         <StatCard label="New" value={leads.filter(l => l.status === 'new').length} icon={Plus} color="text-blue-500" />
-        <StatCard label="Won" value={leads.filter(l => l.status === 'won').length} icon={Search} color="text-emerald-500" />
+        <StatCard label="Won" value={leads.filter(l => l.status === 'converted').length} icon={Search} color="text-emerald-500" />
       </div>
 
       <ScanLogPanel scanLog={latestScanLog} scans={scans} />

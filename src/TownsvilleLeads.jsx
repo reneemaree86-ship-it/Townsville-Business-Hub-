@@ -76,7 +76,7 @@ export default function TownsvilleLeads() {
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <StatusBadge status={lead.urgency} />
                         <StatusBadge status={lead.status} />
-                        {lead.status === 'new' && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => updateMutation.mutate({ id: lead.id, data: { status: 'hot' } })}>Hot</Button>}
+                        {lead.status === 'new' && lead.urgency !== 'urgent' && <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => updateMutation.mutate({ id: lead.id, data: { urgency: 'urgent' } })}>Mark Urgent</Button>}
                       </div>
                     </div>
                   ))}

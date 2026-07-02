@@ -36,8 +36,8 @@ export default function Dashboard() {
     queryFn: () => base44.entities.NotificationQueue.filter({ status: 'queued' }, '-created_date', 10),
   });
 
-  const hotLeads = leads.filter(l => l.status === 'hot' || l.urgency === 'urgent');
-  const followUps = leads.filter(l => !!l.follow_up_due_at && !['won','lost','not_suitable','archived'].includes(l.status));
+  const hotLeads = leads.filter(l => (l.lead_score || 0) >= 70 || l.urgency === 'urgent');
+  const followUps = leads.filter(l => !!l.follow_up_due_at && !['converted','closed','rejected'].includes(l.status));
   const openErrors = errors.filter(e => e.status === 'open' || e.status === 'investigating');
   const lastAudit = audits[0];
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Active Leads" value={leads.filter(l => !['won','lost','archived','not_suitable'].includes(l.status)).length} icon={UserSearch} color="text-primary" subtext={`${hotLeads.length} hot`} />
+        <StatCard label="Active Leads" value={leads.filter(l => !['converted','closed','rejected'].includes(l.status)).length} icon={UserSearch} color="text-primary" subtext={`${hotLeads.length} hot`} />
         <StatCard label="SEO Audits" value={audits.length} icon={Search} color="text-blue-500" subtext={lastAudit ? `Last: ${lastAudit.issues_found} issues` : 'None yet'} />
         <StatCard label="Open Errors" value={openErrors.length} icon={AlertTriangle} color="text-red-500" subtext={`${errors.filter(e => e.severity === 'critical').length} critical`} />
         <StatCard label="Follow-ups Due" value={followUps.length} icon={Clock} color="text-amber-500" subtext={`${followUps.filter(f => new Date(f.follow_up_due_at) < new Date()).length} overdue`} />
