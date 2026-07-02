@@ -13,7 +13,7 @@ import { Separator } from '@/separator';
 import { Plus, Eye, Save, Trash2, Send, FileText, ChevronDown, ChevronUp, X, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import invoiceHeaderImg from '@/assets/invoice-header.png';
+import invoiceHeaderImg from '@/assets/invoice-logo-small.png';
 
 const SERVICE_RATES = {
   'Standard Clean': 75,
@@ -69,21 +69,24 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const margin = 24;
+      const usableWidth = pageWidth - margin * 2;
+      const usableHeight = pageHeight - margin * 2;
 
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Always fit on exactly one page - scale down to fit if content is tall,
+      // never tile across multiple pages.
+      const naturalWidth = usableWidth;
+      const naturalHeight = (canvas.height * naturalWidth) / canvas.width;
+      let imgWidth = naturalWidth;
+      let imgHeight = naturalHeight;
+      if (imgHeight > usableHeight) {
+        imgHeight = usableHeight;
+        imgWidth = (canvas.width * imgHeight) / canvas.height;
       }
+      const x = (pageWidth - imgWidth) / 2;
+      const y = margin;
+
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
 
       const fileName = `Invoice-${invoice.invoice_number || 'draft'}-${client?.name?.replace(/\s+/g, '-') || 'client'}.pdf`;
       pdf.save(fileName);
@@ -105,26 +108,19 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
         </DialogHeader>
 
         <div ref={invoiceRef} className="bg-card border border-border rounded-lg overflow-hidden font-sans">
-          {/* Branded Header Banner - fixed, compact letterhead height */}
-          <div className="w-full flex justify-center bg-card border-b border-border py-2">
+          <div className="p-6 space-y-6">
+          {/* Header: small logo top-left, invoice meta top-right */}
+          <div className="flex justify-between items-start">
             <img
               src={invoiceHeaderImg}
               alt="Renee's Cleaning Services"
               crossOrigin="anonymous"
-              className="h-24 w-auto object-contain"
+              className="h-14 w-auto object-contain"
             />
-          </div>
-
-          <div className="p-6 space-y-6">
-          {/* Invoice meta strip */}
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoice For</p>
-              <p className="text-sm text-foreground mt-0.5">Professional Cleaning Services</p>
-            </div>
             <div className="text-right">
-              <p className="text-sm font-semibold text-foreground">
-                Invoice #{invoice.invoice_number || 'DRAFT'}
+              <div className="text-lg font-bold text-primary">INVOICE</div>
+              <p className="text-sm font-semibold text-foreground mt-1">
+                #{invoice.invoice_number || 'DRAFT'}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Date: {invoiceDate}</p>
               <p className="text-xs text-muted-foreground">Due: {dueDate}</p>
