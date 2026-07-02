@@ -102,12 +102,19 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {lineItems.length > 0 ? lineItems.map((item, i) => (
-                  <tr key={i}>
-                    <td className="py-2 text-foreground">{item.description}</td>
-                    <td className="py-2 text-right text-foreground">${parseFloat(item.amount || 0).toFixed(2)}</td>
-                  </tr>
-                )) : (
+                {lineItems.length > 0 ? lineItems.map((item, i) => {
+                  const qty = parseFloat(item.quantity) || 1;
+                  const unitPrice = item.unit_price !== undefined ? parseFloat(item.unit_price) : parseFloat(item.amount || 0);
+                  const lineTotal = item.amount !== undefined ? parseFloat(item.amount) : qty * unitPrice;
+                  return (
+                    <tr key={i}>
+                      <td className="py-2 text-foreground">
+                        {qty > 1 ? `${qty} x ${item.description} ($${unitPrice.toFixed(2)} ea)` : item.description}
+                      </td>
+                      <td className="py-2 text-right text-foreground">${lineTotal.toFixed(2)}</td>
+                    </tr>
+                  );
+                }) : (
                   <tr>
                     <td className="py-2 text-foreground">{invoice.service_type || 'Cleaning Service'}</td>
                     <td className="py-2 text-right text-foreground">${subtotal.toFixed(2)}</td>
@@ -178,9 +185,14 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
 
 function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, existing }) {
   const seedLineItems = () => {
-    if (existing?.line_items?.length) return existing.line_items.map((li, i) => ({ id: `li-${i}`, description: li.description || '', amount: li.amount || 0 }));
-    if (existing?.service_type) return [{ id: 'li-0', description: existing.service_type, amount: existing.amount || 0 }];
-    return [{ id: 'li-0', description: '', amount: '' }];
+    if (existing?.line_items?.length) return existing.line_items.map((li, i) => ({
+      id: `li-${i}`,
+      description: li.description || '',
+      quantity: li.quantity !== undefined ? li.quantity : 1,
+      unit_price: li.unit_price !== undefined ? li.unit_price : (li.amount || 0),
+    }));
+    if (existing?.service_type) return [{ id: 'li-0', description: existing.service_type, quantity: 1, unit_price: existing.amount || 0 }];
+    return [{ id: 'li-0', description: '', quantity: 1, unit_price: '' }];
   };
 
   const [lineItems, setLineItems] = useState(seedLineItems());
@@ -198,16 +210,18 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
 
   const selectedClient = clients.find(c => c.id === form.client_id);
 
-  const subtotal = lineItems.reduce((sum, li) => sum + (parseFloat(li.amount) || 0), 0) + (parseFloat(travelFee) || 0);
+  const lineTotal = (li) => (parseFloat(li.quantity) || 0) * (parseFloat(li.unit_price) || 0);
+
+  const subtotal = lineItems.reduce((sum, li) => sum + lineTotal(li), 0) + (parseFloat(travelFee) || 0);
   const gst = subtotal * 0.1;
   const total = subtotal + gst;
 
   const addLineItem = (preset) => {
     const id = `li-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     if (preset) {
-      setLineItems(items => [...items, { id, description: preset.description, amount: preset.amount }]);
+      setLineItems(items => [...items, { id, description: preset.description, quantity: 1, unit_price: preset.amount }]);
     } else {
-      setLineItems(items => [...items, { id, description: '', amount: '' }]);
+      setLineItems(items => [...items, { id, description: '', quantity: 1, unit_price: '' }]);
     }
   };
 
@@ -219,12 +233,19 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
     setLineItems(items => items.length > 1 ? items.filter(li => li.id !== id) : items);
   };
 
+  const buildCleanedLineItems = () => lineItems
+    .filter(li => li.description.trim() || parseFloat(li.unit_price) > 0)
+    .map(li => ({
+      description: li.description || 'Service',
+      quantity: parseFloat(li.quantity) || 1,
+      unit_price: parseFloat(li.unit_price) || 0,
+      amount: lineTotal(li),
+    }));
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const cleanedLineItems = lineItems
-        .filter(li => li.description.trim() || parseFloat(li.amount) > 0)
-        .map(li => ({ description: li.description || 'Service', amount: parseFloat(li.amount) || 0 }));
+      const cleanedLineItems = buildCleanedLineItems();
 
       const primaryDescription = cleanedLineItems.length === 1
         ? cleanedLineItems[0].description
@@ -249,7 +270,7 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
 
   const previewInvoice = {
     ...form,
-    line_items: lineItems.filter(li => li.description.trim() || parseFloat(li.amount) > 0).map(li => ({ description: li.description || 'Service', amount: parseFloat(li.amount) || 0 })),
+    line_items: buildCleanedLineItems(),
     travel_fee: parseFloat(travelFee) || 0,
     amount: subtotal.toFixed(2),
     gst_amount: gst.toFixed(2),
@@ -310,22 +331,42 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
           <Label className="text-xs font-semibold">Services & Add-ons</Label>
         </div>
 
+        <div className="hidden md:grid grid-cols-[1fr_70px_100px_90px_32px] gap-2 px-1 mb-1">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Description</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Qty</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Unit Price</span>
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wide text-right">Line Total</span>
+          <span />
+        </div>
+
         <div className="space-y-2">
-          {lineItems.map((li, i) => (
-            <div key={li.id} className="flex items-center gap-2">
+          {lineItems.map((li) => (
+            <div key={li.id} className="grid grid-cols-[1fr_70px_100px_90px_32px] gap-2 items-center">
               <Input
                 placeholder="Description (e.g. Deep Clean, Oven Clean...)"
-                className="text-sm flex-1"
+                className="text-sm"
                 value={li.description}
                 onChange={e => updateLineItem(li.id, 'description', e.target.value)}
               />
               <Input
                 type="number"
-                placeholder="$0.00"
-                className="text-sm w-28"
-                value={li.amount}
-                onChange={e => updateLineItem(li.id, 'amount', e.target.value)}
+                min="1"
+                step="1"
+                placeholder="1"
+                className="text-sm"
+                value={li.quantity}
+                onChange={e => updateLineItem(li.id, 'quantity', e.target.value)}
               />
+              <Input
+                type="number"
+                placeholder="$0.00"
+                className="text-sm"
+                value={li.unit_price}
+                onChange={e => updateLineItem(li.id, 'unit_price', e.target.value)}
+              />
+              <span className="text-sm text-right text-foreground font-medium">
+                ${lineTotal(li).toFixed(2)}
+              </span>
               <Button
                 variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0"
                 onClick={() => removeLineItem(li.id)}
