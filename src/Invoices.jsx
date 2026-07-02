@@ -177,54 +177,70 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
 }
 
 function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, existing }) {
+  const seedLineItems = () => {
+    if (existing?.line_items?.length) return existing.line_items.map((li, i) => ({ id: `li-${i}`, description: li.description || '', amount: li.amount || 0 }));
+    if (existing?.service_type) return [{ id: 'li-0', description: existing.service_type, amount: existing.amount || 0 }];
+    return [{ id: 'li-0', description: '', amount: '' }];
+  };
+
+  const [lineItems, setLineItems] = useState(seedLineItems());
+  const [travelFee, setTravelFee] = useState(existing?.travel_fee || 0);
   const [form, setForm] = useState({
     invoice_number: existing?.invoice_number || `INV-${Date.now().toString().slice(-6)}`,
     client_id: existing?.client_id || '',
-    service_type: existing?.service_type || '',
-    amount: existing?.amount || '',
-    gst_amount: existing?.gst_amount || '',
-    total_amount: existing?.total_amount || '',
     due_date: existing?.due_date || '',
     payment_method: existing?.payment_method || 'Bank Transfer',
     status: existing?.status || 'draft',
     notes: existing?.notes || '',
-    line_items: existing?.line_items || [],
-    travel_fee: existing?.travel_fee || 0,
   });
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const selectedClient = clients.find(c => c.id === form.client_id);
 
-  const calcTotals = (amount, travel = 0) => {
-    const subtotal = parseFloat(amount || 0) + parseFloat(travel || 0);
-    const gst = subtotal * 0.1;
-    const total = subtotal + gst;
-    return { gst: gst.toFixed(2), total: total.toFixed(2) };
+  const subtotal = lineItems.reduce((sum, li) => sum + (parseFloat(li.amount) || 0), 0) + (parseFloat(travelFee) || 0);
+  const gst = subtotal * 0.1;
+  const total = subtotal + gst;
+
+  const addLineItem = (preset) => {
+    const id = `li-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    if (preset) {
+      setLineItems(items => [...items, { id, description: preset.description, amount: preset.amount }]);
+    } else {
+      setLineItems(items => [...items, { id, description: '', amount: '' }]);
+    }
   };
 
-  const handleServiceChange = (val) => {
-    const rate = SERVICE_RATES[val] || 0;
-    const { gst, total } = calcTotals(rate, form.travel_fee);
-    setForm(f => ({ ...f, service_type: val, amount: rate, gst_amount: gst, total_amount: total }));
+  const updateLineItem = (id, field, value) => {
+    setLineItems(items => items.map(li => li.id === id ? { ...li, [field]: value } : li));
   };
 
-  const handleAmountChange = (val) => {
-    const { gst, total } = calcTotals(val, form.travel_fee);
-    setForm(f => ({ ...f, amount: val, gst_amount: gst, total_amount: total }));
-  };
-
-  const handleTravelChange = (val) => {
-    const { gst, total } = calcTotals(form.amount, val);
-    setForm(f => ({ ...f, travel_fee: val, gst_amount: gst, total_amount: total }));
+  const removeLineItem = (id) => {
+    setLineItems(items => items.length > 1 ? items.filter(li => li.id !== id) : items);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const cleanedLineItems = lineItems
+        .filter(li => li.description.trim() || parseFloat(li.amount) > 0)
+        .map(li => ({ description: li.description || 'Service', amount: parseFloat(li.amount) || 0 }));
+
+      const primaryDescription = cleanedLineItems.length === 1
+        ? cleanedLineItems[0].description
+        : cleanedLineItems.length > 1
+          ? 'Multiple Services'
+          : '';
+
       await onSave({
         ...form,
         business_id: activeBusiness?.id,
+        service_type: primaryDescription,
+        line_items: cleanedLineItems,
+        travel_fee: parseFloat(travelFee) || 0,
+        amount: subtotal.toFixed(2),
+        gst_amount: gst.toFixed(2),
+        total_amount: total.toFixed(2),
       });
     } finally {
       setSaving(false);
@@ -233,7 +249,11 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
 
   const previewInvoice = {
     ...form,
-    service_type: form.service_type,
+    line_items: lineItems.filter(li => li.description.trim() || parseFloat(li.amount) > 0).map(li => ({ description: li.description || 'Service', amount: parseFloat(li.amount) || 0 })),
+    travel_fee: parseFloat(travelFee) || 0,
+    amount: subtotal.toFixed(2),
+    gst_amount: gst.toFixed(2),
+    total_amount: total.toFixed(2),
   };
 
   return (
@@ -278,46 +298,96 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-xs">Service Type</Label>
-          <Select value={form.service_type} onValueChange={handleServiceChange}>
-            <SelectTrigger className="mt-1 text-sm"><SelectValue placeholder="Select service..." /></SelectTrigger>
-            <SelectContent>
-              {Object.keys(SERVICE_RATES).map(s => (
-                <SelectItem key={s} value={s}>{s} (${SERVICE_RATES[s]}/hr)</SelectItem>
-              ))}
-              <SelectItem value="Custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
+      <div>
+        <Label className="text-xs">Due Date</Label>
+        <Input type="date" className="mt-1 text-sm max-w-xs" value={form.due_date}
+          onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+      </div>
+
+      {/* Line items editor */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-xs font-semibold">Services & Add-ons</Label>
         </div>
-        <div>
-          <Label className="text-xs">Due Date</Label>
-          <Input type="date" className="mt-1 text-sm" value={form.due_date}
-            onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+
+        <div className="space-y-2">
+          {lineItems.map((li, i) => (
+            <div key={li.id} className="flex items-center gap-2">
+              <Input
+                placeholder="Description (e.g. Deep Clean, Oven Clean...)"
+                className="text-sm flex-1"
+                value={li.description}
+                onChange={e => updateLineItem(li.id, 'description', e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="$0.00"
+                className="text-sm w-28"
+                value={li.amount}
+                onChange={e => updateLineItem(li.id, 'amount', e.target.value)}
+              />
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0"
+                onClick={() => removeLineItem(li.id)}
+                disabled={lineItems.length === 1}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            </div>
+          ))}
+        </div>
+
+        <Button variant="outline" size="sm" className="mt-2 flex items-center gap-1.5" onClick={() => addLineItem(null)}>
+          <Plus className="w-3.5 h-3.5" /> Add Line
+        </Button>
+
+        {/* Quick-add presets */}
+        <div className="mt-3 p-3 bg-muted/40 rounded-lg border border-border">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quick add — services</p>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {Object.entries(SERVICE_RATES).map(([label, rate]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => addLineItem({ description: label, amount: rate })}
+                className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-card hover:bg-accent text-foreground transition-colors"
+              >
+                + {label} (${rate}/hr)
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quick add — add-ons</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ADD_ONS.map(addon => (
+              <button
+                key={addon.label}
+                type="button"
+                onClick={() => addLineItem({ description: addon.label, amount: addon.price })}
+                className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-card hover:bg-accent text-foreground transition-colors"
+              >
+                + {addon.label} (${addon.price})
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label className="text-xs">Amount (excl. GST) $</Label>
-          <Input type="number" className="mt-1 text-sm" value={form.amount}
-            onChange={e => handleAmountChange(e.target.value)} />
-        </div>
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="text-xs">Travel Fee $</Label>
-          <Input type="number" className="mt-1 text-sm" value={form.travel_fee}
-            onChange={e => handleTravelChange(e.target.value)} />
+          <Input type="number" className="mt-1 text-sm" value={travelFee}
+            onChange={e => setTravelFee(e.target.value)} />
+          <p className="text-[10px] text-muted-foreground mt-1">First 10km free, then $1/km</p>
         </div>
         <div>
           <Label className="text-xs">GST (10%) $</Label>
-          <Input type="number" value={form.gst_amount} readOnly className="mt-1 text-sm bg-muted cursor-not-allowed" />
+          <Input value={gst.toFixed(2)} readOnly className="mt-1 text-sm bg-muted cursor-not-allowed" />
         </div>
       </div>
 
       <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
         <span className="text-sm font-semibold text-foreground">Total (incl. GST)</span>
-        <span className="text-lg font-bold text-primary">${parseFloat(form.total_amount || 0).toFixed(2)}</span>
+        <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
       </div>
 
       <div>
@@ -353,7 +423,6 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
     </div>
   );
 }
-
 export default function Invoices() {
   const { activeBusiness } = useOutletContext();
   const [invoices, setInvoices] = useState([]);
