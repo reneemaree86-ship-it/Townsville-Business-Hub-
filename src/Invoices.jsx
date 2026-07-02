@@ -105,13 +105,15 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
         </DialogHeader>
 
         <div ref={invoiceRef} className="bg-card border border-border rounded-lg overflow-hidden font-sans">
-          {/* Branded Header Banner */}
-          <img
-            src={invoiceHeaderImg}
-            alt="Renee's Cleaning Services"
-            crossOrigin="anonymous"
-            className="w-full h-auto block"
-          />
+          {/* Branded Header Banner - fixed, compact letterhead height */}
+          <div className="w-full flex justify-center bg-card border-b border-border py-2">
+            <img
+              src={invoiceHeaderImg}
+              alt="Renee's Cleaning Services"
+              crossOrigin="anonymous"
+              className="h-24 w-auto object-contain"
+            />
+          </div>
 
           <div className="p-6 space-y-6">
           {/* Invoice meta strip */}
