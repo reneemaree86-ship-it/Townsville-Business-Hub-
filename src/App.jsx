@@ -33,7 +33,6 @@ import ApprovalQueue from '@/ApprovalQueue';
 import BusinessSettings from '@/BusinessSettings';
 import UrlWatchlistPage from '@/UrlWatchlistPage';
 import CleaningAgent from '@/CleaningAgent';
-import FileCentre from '@/FileCentre';
 import ReneesCleaningProfile from '@/ReneesCleaningProfile';
 import BusinessInbox from '@/BusinessInbox';
 import Invoices from '@/Invoices';
@@ -110,7 +109,6 @@ const AuthenticatedApp = () => {
             <Route path="/settings" element={<BusinessSettings />} />
             <Route path="/watchlist" element={<UrlWatchlistPage />} />
             <Route path="/agent" element={<CleaningAgent />} />
-            <Route path="/file-centre" element={<FileCentre />} />
             <Route path="/renees-cleaning" element={<ReneesCleaningProfile />} />
           </Route>
         </Route>

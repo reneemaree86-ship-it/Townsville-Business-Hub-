@@ -40,6 +40,17 @@ const STATUS_COLORS = {
   overdue: 'bg-red-100 text-red-700',
 };
 
+const PAYMENT_METHOD_LABELS = {
+  bank_transfer: 'Bank Transfer',
+  cash: 'Cash',
+  card: 'Card',
+  stripe: 'Stripe',
+  dva_billing: 'DVA Billing',
+  ndis_billing: 'NDIS Billing',
+  other: 'Other',
+};
+const formatPaymentMethod = (v) => PAYMENT_METHOD_LABELS[v] || v;
+
 function InvoicePreviewModal({ invoice, client, onClose }) {
   const today = new Date();
   const invoiceDate = today.toLocaleDateString('en-AU', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -204,7 +215,7 @@ function InvoicePreviewModal({ invoice, client, onClose }) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Payment Method</p>
-                  <p className="text-sm text-foreground">{invoice.payment_method}</p>
+                  <p className="text-sm text-foreground">{formatPaymentMethod(invoice.payment_method)}</p>
                 </div>
                 {invoice.status === 'paid' && (
                   <div className="text-right">
@@ -268,7 +279,7 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
     invoice_number: existing?.invoice_number || `INV-${Date.now().toString().slice(-6)}`,
     client_id: existing?.client_id || '',
     due_date: existing?.due_date || '',
-    payment_method: existing?.payment_method || 'Bank Transfer',
+    payment_method: existing?.payment_method || 'bank_transfer',
     status: existing?.status || 'draft',
     notes: existing?.notes || '',
   });
@@ -503,10 +514,13 @@ function InvoiceForm({ clients, businesses, activeBusiness, onSave, onCancel, ex
         <Select value={form.payment_method} onValueChange={v => setForm(f => ({ ...f, payment_method: v }))}>
           <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-            <SelectItem value="Cash">Cash</SelectItem>
-            <SelectItem value="Card">Card</SelectItem>
-            <SelectItem value="Stripe">Stripe</SelectItem>
+            <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+            <SelectItem value="card">Card</SelectItem>
+            <SelectItem value="stripe">Stripe</SelectItem>
+            <SelectItem value="dva_billing">DVA Billing</SelectItem>
+            <SelectItem value="ndis_billing">NDIS Billing</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
           </SelectContent>
         </Select>
       </div>

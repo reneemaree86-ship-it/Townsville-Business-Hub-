@@ -31,7 +31,6 @@ const navItems = [
   { label: 'URL Watchlist', icon: Link2, path: '/watchlist' },
   { label: 'Business Settings', icon: Settings, path: '/settings' },
   { label: 'Business Assistant', icon: Bot, path: '/agent' },
-  { label: 'File Centre', icon: FolderOpen, path: '/file-centre' },
 ];
 
 export default function Sidebar({ activeBusiness, onBusinessChange, businesses, unreadCount, onClose }) {
