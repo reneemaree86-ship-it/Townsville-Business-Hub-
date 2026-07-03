@@ -41,7 +41,20 @@ export default function BusinessSettings() {
   }, [activeBusiness]);
 
   const saveMutation = useMutation({
-    mutationFn: () => base44.entities.Business.update(activeBusiness.id, form),
+    mutationFn: () => {
+      // Defensive sanitize: guarantee service_radius_km is always a real number or null,
+      // never a raw string, no matter what state the form got into.
+      let radius = form.service_radius_km;
+      if (radius === '' || radius === undefined) {
+        radius = null;
+      } else if (typeof radius === 'string') {
+        const parsed = Number(radius);
+        radius = Number.isNaN(parsed) ? null : parsed;
+      } else if (typeof radius === 'number' && Number.isNaN(radius)) {
+        radius = null;
+      }
+      return base44.entities.Business.update(activeBusiness.id, { ...form, service_radius_km: radius });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['businesses'] }); toast.success('Settings saved'); },
   });
 
