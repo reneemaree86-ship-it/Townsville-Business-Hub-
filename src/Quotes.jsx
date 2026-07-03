@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { base44 } from '@/base44Client';
 import { Card, CardContent } from '@/card';
@@ -13,7 +13,7 @@ import { Separator } from '@/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/dialog';
 import PageHeader from '@/PageHeader';
 import StatusBadge from '@/StatusBadge';
-import { Plus, Pencil, Trash2, Send, CheckCircle2, XCircle, ArrowRightCircle, FileText, Eye, Download, Receipt } from 'lucide-react';
+import { Plus, Pencil, Trash2, Send, CheckCircle2, XCircle, ArrowRightCircle, FileText, Eye, Download, Receipt, RotateCcw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import invoiceHeaderImg from '@/assets/invoice-logo-small.png';
@@ -27,32 +27,63 @@ const FALLBACK_ADD_ONS = [
   { name: 'Fridge/Freezer Combo', price: 85 },
 ];
 
+// Locked formula per Renee (2026-07-03):
+// base 1.5hr + 0.35hr/bedroom + 0.5hr/bathroom + 0.25hr/extra living area
+// + 0.25hr large kitchen + 0.5hr heavy dust/pet hair/clutter/extra detail
+// then × condition multiplier, floored at the service's minimum_hours,
+// then rounded UP to the nearest 0.5hr.
 const CONDITION_LEVELS = [
-  { value: 'light', label: 'Light' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'heavy', label: 'Heavy' },
+  { value: 'light', label: 'Light / well maintained', multiplier: 0.9 },
+  { value: 'standard', label: 'Standard / average', multiplier: 1.0 },
+  { value: 'detailed', label: 'Detailed / lived-in', multiplier: 1.25 },
+  { value: 'heavy', label: 'Heavy / neglected', multiplier: 1.5 },
+  { value: 'deep_clean', label: 'Deep clean / restoration level', multiplier: 1.75 },
 ];
+
+function conditionMultiplier(level) {
+  return CONDITION_LEVELS.find(c => c.value === level)?.multiplier ?? 1.0;
+}
+
+function calculateHours({ bedrooms, bathrooms, extra_living_areas, large_kitchen, extra_detail_needed, condition_level }, minimumHours) {
+  const bd = parseFloat(bedrooms) || 0;
+  const ba = parseFloat(bathrooms) || 0;
+  const living = parseFloat(extra_living_areas) || 0;
+
+  let hours = 1.5 + bd * 0.35 + ba * 0.5 + living * 0.25;
+  if (large_kitchen) hours += 0.25;
+  if (extra_detail_needed) hours += 0.5;
+
+  hours *= conditionMultiplier(condition_level);
+
+  const floor = parseFloat(minimumHours) || 0;
+  hours = Math.max(hours, floor);
+
+  // round up to nearest 0.5
+  hours = Math.ceil(hours * 2) / 2;
+
+  return +hours.toFixed(2);
+}
 
 function computeTotals(form) {
   const rate = parseFloat(form.hourly_rate) || 0;
-  const hMin = parseFloat(form.estimated_hours_min) || 0;
-  const hMax = parseFloat(form.estimated_hours_max) || 0;
+  const hours = parseFloat(form.final_hours) || 0;
   const travel = parseFloat(form.travel_fee) || 0;
   const laundry = parseFloat(form.laundry_linen_fee) || 0;
   const urgency = parseFloat(form.urgency_fee) || 0;
   const addOnsTotal = (form.add_ons || []).reduce((sum, a) => sum + (parseFloat(a.price) || 0), 0);
 
-  const subtotalMin = rate * hMin + travel + laundry + urgency + addOnsTotal;
-  const subtotalMax = rate * hMax + travel + laundry + urgency + addOnsTotal;
-  const gstMin = form.gst_included ? subtotalMin * 0.1 : 0;
-  const gstMax = form.gst_included ? subtotalMax * 0.1 : 0;
+  const subtotal = rate * hours + travel + laundry + urgency + addOnsTotal;
+  const gstAmount = form.gst_included ? subtotal * 0.1 : 0;
+  const total = subtotal + gstAmount;
 
   return {
-    subtotal: +subtotalMax.toFixed(2),
-    gst_amount: +gstMax.toFixed(2),
-    total_range_min: +(subtotalMin + gstMin).toFixed(2),
-    total_range_max: +(subtotalMax + gstMax).toFixed(2),
-    total_estimate: +(subtotalMax + gstMax).toFixed(2),
+    subtotal: +subtotal.toFixed(2),
+    gst_amount: +gstAmount.toFixed(2),
+    total_estimate: +total.toFixed(2),
+    total_range_min: +total.toFixed(2),
+    total_range_max: +total.toFixed(2),
+    estimated_hours_min: hours,
+    estimated_hours_max: hours,
   };
 }
 
@@ -62,11 +93,15 @@ const emptyForm = {
   service_id: '',
   service_type: '',
   hourly_rate: 75,
-  estimated_hours_min: 2,
-  estimated_hours_max: 3,
   bedrooms: '',
   bathrooms: '',
+  extra_living_areas: '',
+  large_kitchen: false,
+  extra_detail_needed: false,
   condition_level: 'standard',
+  calculated_hours: null,
+  manual_hours_override: null,
+  final_hours: 2,
   add_ons: [],
   travel_fee: 0,
   laundry_linen_fee: 0,
@@ -83,15 +118,32 @@ const emptyForm = {
 function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, leads, services }) {
   const [sourceType, setSourceType] = useState('client');
   const [form, setForm] = useState(existing ? { ...emptyForm, ...existing } : emptyForm);
+  const [hoursTouched, setHoursTouched] = useState(false);
 
   useEffect(() => {
     const initial = existing ? { ...emptyForm, ...existing, add_ons: existing.add_ons || [] } : emptyForm;
     setForm(initial);
     setSourceType(initial.lead_id && !initial.client_id ? 'lead' : 'client');
+    setHoursTouched(!!existing?.manual_hours_override);
   }, [existing, open]);
 
   const selectedService = services.find(s => s.id === form.service_id);
   const availableAddOns = selectedService?.add_ons?.length ? selectedService.add_ons : FALLBACK_ADD_ONS;
+
+  const calculatedHours = useMemo(
+    () => calculateHours(form, selectedService?.minimum_hours),
+    [form.bedrooms, form.bathrooms, form.extra_living_areas, form.large_kitchen, form.extra_detail_needed, form.condition_level, selectedService?.minimum_hours]
+  );
+
+  // Auto-sync final_hours to the formula unless the user has manually overridden it
+  useEffect(() => {
+    if (!hoursTouched) {
+      setForm(f => ({ ...f, final_hours: calculatedHours, calculated_hours: calculatedHours }));
+    } else {
+      setForm(f => ({ ...f, calculated_hours: calculatedHours }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calculatedHours]);
 
   const handleServiceChange = (serviceId) => {
     const svc = services.find(s => s.id === serviceId);
@@ -100,7 +152,6 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
       service_id: serviceId,
       service_type: svc?.name || f.service_type,
       hourly_rate: svc?.pricing_model === 'hourly' ? (svc.hourly_rate ?? f.hourly_rate) : f.hourly_rate,
-      estimated_hours_min: svc?.minimum_hours ?? f.estimated_hours_min,
       add_ons: [],
     }));
   };
@@ -115,23 +166,37 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
     });
   };
 
+  const handleFinalHoursChange = (value) => {
+    setHoursTouched(true);
+    setForm(f => ({ ...f, final_hours: value }));
+  };
+
+  const handleRecalculate = () => {
+    setHoursTouched(false);
+    setForm(f => ({ ...f, final_hours: calculatedHours, manual_hours_override: null }));
+  };
+
   const totals = computeTotals(form);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const finalHoursNum = parseFloat(form.final_hours) || 0;
+    const isOverridden = hoursTouched && finalHoursNum !== calculatedHours;
     const payload = {
       ...form,
       lead_id: sourceType === 'lead' ? form.lead_id : '',
       client_id: sourceType === 'client' ? form.client_id : '',
       hourly_rate: parseFloat(form.hourly_rate) || 0,
-      estimated_hours_min: parseFloat(form.estimated_hours_min) || 0,
-      estimated_hours_max: parseFloat(form.estimated_hours_max) || 0,
       bedrooms: form.bedrooms === '' ? null : Number(form.bedrooms),
       bathrooms: form.bathrooms === '' ? null : Number(form.bathrooms),
+      extra_living_areas: form.extra_living_areas === '' ? null : Number(form.extra_living_areas),
       travel_fee: parseFloat(form.travel_fee) || 0,
       laundry_linen_fee: parseFloat(form.laundry_linen_fee) || 0,
       urgency_fee: parseFloat(form.urgency_fee) || 0,
-      ...totals,
+      calculated_hours: calculatedHours,
+      manual_hours_override: isOverridden ? finalHoursNum : null,
+      final_hours: finalHoursNum,
+      ...computeTotals({ ...form, final_hours: finalHoursNum }),
       expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
     };
     onSave(payload);
@@ -191,23 +256,15 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label className="text-xs">Hourly Rate ($)</Label>
-              <Input type="number" step="0.01" className="mt-1 text-sm" value={form.hourly_rate}
-                onChange={e => setForm(f => ({ ...f, hourly_rate: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs">Hours (min)</Label>
-              <Input type="number" step="0.5" className="mt-1 text-sm" value={form.estimated_hours_min}
-                onChange={e => setForm(f => ({ ...f, estimated_hours_min: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs">Hours (max)</Label>
-              <Input type="number" step="0.5" className="mt-1 text-sm" value={form.estimated_hours_max}
-                onChange={e => setForm(f => ({ ...f, estimated_hours_max: e.target.value }))} />
-            </div>
+          <div>
+            <Label className="text-xs">Hourly Rate ($)</Label>
+            <Input type="number" step="0.01" className="mt-1 text-sm max-w-[160px]" value={form.hourly_rate}
+              onChange={e => setForm(f => ({ ...f, hourly_rate: e.target.value }))} />
+            <p className="text-[10px] text-muted-foreground mt-1">Pulled from the Services Catalog — edit there to change the locked rate.</p>
           </div>
+
+          <Separator />
+          <p className="text-xs font-semibold text-foreground">Auto-Hours Calculator</p>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -221,16 +278,53 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
                 onChange={e => setForm(f => ({ ...f, bathrooms: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-xs">Condition</Label>
-              <Select value={form.condition_level} onValueChange={v => setForm(f => ({ ...f, condition_level: v }))}>
-                <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CONDITION_LEVELS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label className="text-xs">Extra Living Areas</Label>
+              <Input type="number" className="mt-1 text-sm" value={form.extra_living_areas}
+                onChange={e => setForm(f => ({ ...f, extra_living_areas: e.target.value }))} />
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground -mt-2">Use bedrooms/bathrooms/condition as a guide to adjust your hours estimate above — pricing is always by the hour.</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-xs p-2 border border-border rounded-md cursor-pointer">
+              <Checkbox checked={form.large_kitchen} onCheckedChange={v => setForm(f => ({ ...f, large_kitchen: !!v }))} />
+              Large kitchen
+            </label>
+            <label className="flex items-center gap-2 text-xs p-2 border border-border rounded-md cursor-pointer">
+              <Checkbox checked={form.extra_detail_needed} onCheckedChange={v => setForm(f => ({ ...f, extra_detail_needed: !!v }))} />
+              Heavy dust / pet hair / clutter
+            </label>
+          </div>
+
+          <div>
+            <Label className="text-xs">Condition Level</Label>
+            <Select value={form.condition_level} onValueChange={v => setForm(f => ({ ...f, condition_level: v }))}>
+              <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CONDITION_LEVELS.map(c => <SelectItem key={c.value} value={c.value}>{c.label} (×{c.multiplier})</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="p-3 bg-muted rounded-lg space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Auto-calculated hours{selectedService?.minimum_hours ? ` (min ${selectedService.minimum_hours}hr)` : ''}</span>
+              <span className="font-semibold text-foreground">{calculatedHours} hrs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Label className="text-xs">Final Hours {hoursTouched && <span className="text-amber-600 dark:text-amber-400">(manually overridden)</span>}</Label>
+                <Input type="number" step="0.5" className="mt-1 text-sm" value={form.final_hours}
+                  onChange={e => handleFinalHoursChange(e.target.value)} />
+              </div>
+              {hoursTouched && (
+                <Button type="button" size="sm" variant="outline" className="mt-5 h-9" onClick={handleRecalculate}>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <Separator />
 
           <div>
             <Label className="text-xs">Add-ons</Label>
@@ -270,7 +364,7 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
 
           <div className="p-3 bg-muted rounded-lg space-y-1">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Subtotal</span><span>${totals.subtotal.toFixed(2)}</span>
+              <span>{form.final_hours} hrs × ${parseFloat(form.hourly_rate || 0).toFixed(2)}/hr + fees/add-ons</span><span>${totals.subtotal.toFixed(2)}</span>
             </div>
             {form.gst_included && (
               <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -279,7 +373,7 @@ function QuoteFormModal({ open, onClose, onSave, existing, saving, clients, lead
             )}
             <div className="flex items-center justify-between pt-1 border-t border-border">
               <span className="text-xs font-medium">Total Estimate</span>
-              <span className="text-sm font-bold text-foreground">${totals.total_range_min.toFixed(2)} – ${totals.total_range_max.toFixed(2)}</span>
+              <span className="text-sm font-bold text-foreground">${totals.total_estimate.toFixed(2)}</span>
             </div>
           </div>
 
@@ -387,6 +481,7 @@ function QuotePreviewModal({ quote, client, lead, onClose, onSent }) {
   };
 
   const total = quote.total_estimate ?? quote.total_range_max ?? 0;
+  const hours = quote.final_hours ?? quote.estimated_hours_max ?? 0;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -424,10 +519,10 @@ function QuotePreviewModal({ quote, client, lead, onClose, onSent }) {
               <tbody className="divide-y divide-border">
                 <tr>
                   <td className="py-2 text-foreground">
-                    {quote.service_type || 'Cleaning Service'} — {quote.estimated_hours_min}–{quote.estimated_hours_max} hrs @ ${parseFloat(quote.hourly_rate || 0).toFixed(2)}/hr
+                    {quote.service_type || 'Cleaning Service'} — {hours} hrs @ ${parseFloat(quote.hourly_rate || 0).toFixed(2)}/hr
                   </td>
                   <td className="py-2 text-right text-foreground">
-                    ${(parseFloat(quote.hourly_rate || 0) * parseFloat(quote.estimated_hours_min || 0)).toFixed(2)} – ${(parseFloat(quote.hourly_rate || 0) * parseFloat(quote.estimated_hours_max || 0)).toFixed(2)}
+                    ${(parseFloat(quote.hourly_rate || 0) * parseFloat(hours || 0)).toFixed(2)}
                   </td>
                 </tr>
                 {(quote.add_ons || []).map((a, i) => (
@@ -455,7 +550,7 @@ function QuotePreviewModal({ quote, client, lead, onClose, onSent }) {
               )}
               <div className="flex justify-between font-bold text-base border-t border-border pt-2 mt-1">
                 <span className="text-foreground">Total Estimate</span>
-                <span className="text-primary">${parseFloat(quote.total_range_min || 0).toFixed(2)} – ${parseFloat(total).toFixed(2)}</span>
+                <span className="text-primary">${parseFloat(total).toFixed(2)}</span>
               </div>
             </div>
             {quote.caveat && (
@@ -653,9 +748,9 @@ export default function Quotes() {
                     </span>
                     <StatusBadge status={q.status} />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{q.service_type || '—'}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{q.service_type || '—'} · {q.final_hours ?? q.estimated_hours_max ?? '—'} hrs</p>
                   <p className="text-sm font-semibold text-foreground mt-1">
-                    ${parseFloat(q.total_range_min || 0).toFixed(2)} – ${parseFloat(q.total_range_max || q.total_estimate || 0).toFixed(2)}
+                    ${parseFloat(q.total_estimate ?? q.total_range_max ?? 0).toFixed(2)}
                   </p>
                   {q.expires_at && <p className="text-[10px] text-muted-foreground mt-1">Expires {new Date(q.expires_at).toLocaleDateString('en-AU')}</p>}
                 </div>
